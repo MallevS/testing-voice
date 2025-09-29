@@ -1,10 +1,16 @@
 import { zodTextFormat } from 'openai/helpers/zod';
 import { GuardrailOutputZod, GuardrailOutput } from '@/app/types';
+import { getAuth } from "firebase/auth";
 
 export async function runGuardrailClassifier(
   message: string,
-  companyName: string,
+  companyName: string
 ): Promise<GuardrailOutput> {
+  const auth = getAuth();
+  const user = auth.currentUser;
+  if (!user) throw new Error("No Firebase user logged in");
+  const userToken = await user.getIdToken();
+
   const messages = [
     {
       role: 'user',
@@ -28,36 +34,72 @@ export async function runGuardrailClassifier(
     },
   ];
 
-  const response = await fetch('/api/responses', {
-    method: 'POST',
+  // const response = await fetch('/api/responses', {
+  //   method: 'POST',
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //   },
+  //   body: JSON.stringify({
+  //     model: "ft:gpt-4o-mini-2024-07-18:personal:gpt-4o-2024-08-06-sales-rep-v8:CHabe15Z",
+  //     input: messages,
+  //     text: {
+  //       format: zodTextFormat(GuardrailOutputZod, 'output_format'),
+  //     },
+  //   }),
+  // });
+
+  const response = await fetch("/api/responses", {
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${userToken}`, // <-- required
     },
     body: JSON.stringify({
-      model: "ft:gpt-4o-mini-2024-07-18:personal:gpt-4o-2024-08-06-sales-rep-v8:CHabe15Z",
+      model:
+        "ft:gpt-4o-mini-2024-07-18:personal:gpt-4o-2024-08-06-sales-rep-v8:CHabe15Z",
       input: messages,
       text: {
-        format: zodTextFormat(GuardrailOutputZod, 'output_format'),
+        format: zodTextFormat(GuardrailOutputZod, "output_format"),
       },
     }),
   });
 
   if (!response.ok) {
+    if (response.status === 402) {
+      window.dispatchEvent(new CustomEvent("insufficientCredits"));
+    }
     console.warn('Server returned an error:', response);
-    return Promise.reject('Error with runGuardrailClassifier.');
+    return Promise.reject({
+      message: 'Error with runGuardrailClassifier.',
+      status: response.status,
+    });
   }
+
 
   const data = await response.json();
 
+  // try {
+  //   const output = GuardrailOutputZod.parse(data.output_parsed);
+  //   return {
+  //     ...output,
+  //     testText: message,
+  //   };
+  // } catch (error) {
+  //   console.error('Error parsing the message content as GuardrailOutput:', error);
+  //   return Promise.reject('Failed to parse guardrail output.');
+  // }
   try {
-    const output = GuardrailOutputZod.parse(data.output_parsed);
+    // OpenAI Responses API returns text inside content array
+    const rawText = data.output?.[0]?.content?.[0]?.text ?? "{}";
+    const parsed = GuardrailOutputZod.parse(JSON.parse(rawText));
+
     return {
-      ...output,
+      ...parsed,
       testText: message,
     };
   } catch (error) {
-    console.error('Error parsing the message content as GuardrailOutput:', error);
-    return Promise.reject('Failed to parse guardrail output.');
+    console.error("Error parsing guardrail output:", error, data);
+    return Promise.reject("Failed to parse guardrail output.");
   }
 }
 
