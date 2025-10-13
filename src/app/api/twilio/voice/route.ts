@@ -2,11 +2,12 @@ import { NextResponse } from "next/server";
 
 export async function POST() {
   const twiml = `
-    <Response>
-      <Connect>
-        <Stream url="wss://${process.env.NEXT_PUBLIC_BASE_URL!.replace(/^https?:\/\//,'')}/api/realtime-stream" />
-      </Connect>
-    </Response>
+  <Response>
+  <Connect>
+    <Stream url="wss://testing-voice-amber.vercel.app/api/realtime-stream" />
+  </Connect>
+</Response>
+
   `;
 
   return new NextResponse(twiml, {
