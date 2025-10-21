@@ -49,6 +49,8 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { to, from, companyName, companyContext } = body;
 
+    console.log("📞 Initiating call with:", { to, companyName, companyContext });
+
     // Validate input
     if (!to) {
       return NextResponse.json({ error: "Missing 'to' number" }, { status: 400 });
@@ -67,19 +69,20 @@ export async function POST(req: Request) {
 
     const client = twilio(accountSid, authToken);
 
-    console.log("📞 Initiating Twilio call", { to, from: from || defaultFrom, companyName });
-
     // 🔥 Pass company context as URL parameters
     const voiceUrl = new URL(`${baseUrl}/api/twilio/voice`);
     if (companyName) voiceUrl.searchParams.set("companyName", companyName);
     if (companyContext) voiceUrl.searchParams.set("companyContext", companyContext);
+
+    console.log("🔗 Voice URL:", voiceUrl.toString());
 
     const call = await client.calls.create({
       to,
       from: from || defaultFrom,
       url: voiceUrl.toString(),
       statusCallback: `${baseUrl}/api/twilio/status`,
-      statusCallbackEvent: ["initiated", "ringing", "in-progress", "completed", "failed"],
+      // 🔥 FIX: Use correct event names (no spaces, use hyphens)
+      statusCallbackEvent: ["initiated", "ringing", "answered", "completed"],
     });
 
     console.log("✅ Call created successfully:", call.sid);
