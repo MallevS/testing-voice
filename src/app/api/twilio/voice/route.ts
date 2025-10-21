@@ -14,16 +14,6 @@
 // }
 import { NextResponse } from "next/server";
 
-// Helper function to escape XML special characters
-function escapeXml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
 export async function POST(req: Request) {
   try {
     // Twilio sends form data, not JSON
@@ -40,20 +30,18 @@ export async function POST(req: Request) {
 
     console.log("📋 Voice route called with:", { companyName, companyContext });
 
-    // 🔥 Pass context to WebSocket via URL parameters
-    const wsUrl = new URL("wss://voice-realtime-bridge.fly.dev");
-    wsUrl.searchParams.set("companyName", companyName);
-    wsUrl.searchParams.set("companyContext", companyContext);
+    // 🔥 NEW APPROACH: Encode context in the URL path as base64
+    const contextData = Buffer.from(JSON.stringify({ companyName, companyContext })).toString('base64');
+    
+    // Simple URL without special characters
+    const wsUrl = `wss://voice-realtime-bridge.fly.dev/${contextData}`;
 
-    // 🔥 CRITICAL: Escape the URL for XML
-    const escapedWsUrl = escapeXml(wsUrl.toString());
-
-    console.log("🔗 WebSocket URL:", escapedWsUrl);
+    console.log("🔗 WebSocket URL:", wsUrl);
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="${escapedWsUrl}" />
+    <Stream url="${wsUrl}" />
   </Connect>
 </Response>`;
     
