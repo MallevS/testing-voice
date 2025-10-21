@@ -46,27 +46,26 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showContext, setShowContext] = useState(false);
   const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
 
   useEffect(() => {
     const listener = async () => {
       setShowInsufficientCreditsModal(true);
-  
-      // Stop ongoing session
+
       try {
         await disconnectFromRealtime();
       } catch (err) {
         console.error("Failed to disconnect on insufficient credits:", err);
       }
-  
-      // Mute SDK audio
+
       try {
         mute(true);
-      } catch {}
-      
+      } catch { }
+
       setUserText(""); // Clear input
       setIsPTTUserSpeaking(false);
     };
-  
+
     window.addEventListener("insufficientCredits", listener);
     return () => window.removeEventListener("insufficientCredits", listener);
   }, []);
@@ -265,10 +264,10 @@ function App() {
 
   const connectToRealtime = async () => {
     const agentSetKey = searchParams.get("agentConfig") || "default";
-  
+
     let agentsToUse: RealtimeAgent[];
     let companyNameToUse: RealtimeAgent[];
-  
+
     if (useCustomCompany && companyName.trim()) {
       agentsToUse = createCustomerServiceScenario(companyName.trim(), companyContext.trim());
       companyNameToUse = createCustomerServiceScenario(companyName.trim(), companyContext.trim());
@@ -278,45 +277,45 @@ function App() {
     } else {
       return;
     }
-  
+
     if (sessionStatus !== "DISCONNECTED") return;
     setSessionStatus("CONNECTING");
-  
+
     try {
       const user = auth.currentUser;
       if (!user) return;
-  
+
       // Check group credits first with minimum requirement
       const userSnap = await getDoc(doc(db, "users", user.uid));
       if (!userSnap.exists) throw new Error("User not found");
-  
+
       const userData = userSnap.data();
       if (!userData?.groupId) throw new Error("User not in group");
-  
+
       const groupSnap = await getDoc(doc(db, "groups", userData.groupId));
       if (!groupSnap.exists) throw new Error("Group not found");
-  
+
       const groupData = groupSnap.data();
       const currentCredits = groupData?.credits ?? 0;
-  
+
       if (currentCredits < MINIMUM_CREDITS_REQUIRED) {
         setShowInsufficientCreditsModal(true);
         setSessionStatus("DISCONNECTED"); // Prevent connecting
         return; // Stop the session before it starts
       }
-  
+
       const EPHEMERAL_KEY = await fetchEphemeralKey();
       if (!EPHEMERAL_KEY) return;
-  
+
       const reorderedAgents = [...agentsToUse];
       const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
       if (idx > 0) {
         const [agent] = reorderedAgents.splice(idx, 1);
         reorderedAgents.unshift(agent);
       }
-  
+
       const guardrail = createModerationGuardrail(companyName.trim());
-  
+
       await connect({
         getEphemeralKey: async () => EPHEMERAL_KEY,
         initialAgents: reorderedAgents,
@@ -337,7 +336,7 @@ function App() {
       setSessionStatus("DISCONNECTED");
     }
   };
-  
+
 
   // const connectToRealtime = async () => {
   //   const agentSetKey = searchParams.get("agentConfig") || "default";
@@ -361,7 +360,7 @@ function App() {
   //   try {
   //     const user = auth.currentUser;
   //     if (!user) return;
-  
+
   //     const enough = await hasEnoughCredits(user);
   //     if (!enough) {
   //       setShowInsufficientCreditsModal(true);
@@ -469,13 +468,13 @@ function App() {
     try {
       const userSnap = await getDoc(doc(db, "users", user.uid));
       if (!userSnap.exists()) return false;
-  
+
       const userData = userSnap.data();
       if (!userData?.groupId) return false;
-  
+
       const groupSnap = await getDoc(doc(db, "groups", userData.groupId));
       if (!groupSnap.exists()) return false;
-  
+
       const groupData = groupSnap.data();
       return (groupData?.credits ?? 0) > 0;
     } catch (err) {
@@ -483,7 +482,7 @@ function App() {
       return false;
     }
   }
-  
+
 
   // const handleSendTextMessage = () => {
   //   if (!userText.trim()) return;
@@ -500,9 +499,9 @@ function App() {
 
   const handleSendTextMessage = async () => {
     if (!userText.trim()) return;
-  
+
     interrupt();
-  
+
     try {
       await sendUserText(userText.trim()); // <-- make sure this is async
     } catch (err: any) {
@@ -511,10 +510,9 @@ function App() {
         setShowInsufficientCreditsModal(true);
       }
     }
-  
+
     setUserText("");
   };
-  
 
   const handleTalkButtonDown = () => {
     if (sessionStatus !== 'CONNECTED') return;
@@ -652,6 +650,70 @@ function App() {
     }
   };
 
+  // const handleInitiateCall = async () => {
+  //   if (!phoneNumber.trim()) return;
+  //   try {
+  //     const res = await fetch("/api/twilio/call", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify({ to: phoneNumber }),
+  //     });
+
+  //     if (!res.ok) {
+  //       const err = await res.text();
+  //       throw new Error(err);
+  //     }
+
+  //     alert(`Call initiated to ${phoneNumber}`);
+  //   } catch (err) {
+  //     console.error("Failed to initiate call:", err);
+  //     alert("Error initiating call. Check console.");
+  //   }
+  // };
+
+  const handleInitiateCall = async () => {
+    // Validate all fields
+    if (!phoneNumber.trim()) {
+      alert("❌ Please enter a phone number");
+      return;
+    }
+
+    if (!companyName.trim() || !companyContext.trim()) {
+      alert("❌ Please fill in Company Name and Company Context first!");
+      return;
+    }
+
+    console.log("📞 Initiating call with:", {
+      phoneNumber,
+      companyName: companyName.trim(),
+      companyContext: companyContext.trim()
+    });
+
+    try {
+      const res = await fetch("/api/twilio/call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: phoneNumber.trim(),
+          companyName: companyName.trim(),
+          companyContext: companyContext.trim()
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        throw new Error(err);
+      }
+
+      const data = await res.json();
+      alert(`✅ Call initiated to ${phoneNumber}!\n\nThe AI will represent ${companyName}.`);
+      console.log("✅ Call initiated:", data);
+    } catch (err: any) {
+      console.error("❌ Failed to initiate call:", err);
+      alert(`❌ Error initiating call: ${err.message}`);
+    }
+  };
+
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
       <div className="p-5 text-lg font-semibold flex justify-between items-center bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 text-gray-200 shadow-md border-b border-gray-600">
@@ -661,11 +723,15 @@ function App() {
           title="Reload page"
         >
           <div className="text-xl font-extrabold tracking-wide">
-            RedHavana <span className="text-gray-400 font-normal">Voice Agent</span>
+            Anthro <span className="text-gray-400 font-normal">Dev Voice App</span>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
+          <Link href="/call-list" className="flex items-center gap-1 px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors duration-300 text-sm font-semibold"
+          >
+            Call List
+          </Link>
           <button
             onClick={() => setShowContext(prev => !prev)}
             className="flex items-center gap-1 px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors duration-300 text-sm font-semibold"
@@ -775,6 +841,17 @@ function App() {
             />
           </div>
 
+          <div className="flex flex-col gap-1 items-start">
+            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <input
+              type="tel"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="+1234567890"
+              className="border border-gray-300 rounded px-3 py-2 w-60 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            />
+          </div>
+
           <button
             onClick={handleUpdateCompany}
             disabled={!companyName.trim()}
@@ -782,19 +859,17 @@ function App() {
           >
             Update Agent
           </button>
+
+          <button
+            onClick={handleInitiateCall}
+            disabled={!phoneNumber.trim() || !companyName.trim() || !companyContext.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed shadow-md transition-colors duration-300"
+            title={!companyName.trim() || !companyContext.trim() ? "Fill in all required fields first" : ""}
+          >
+            📞 Call
+          </button>
         </div>
       </div>
-
-      {/* <Header
-        authLoading={authLoading}
-        currentUser={currentUser}
-        userRole={userRole as "user" | "admin" | "superadmin" | undefined}
-        companyName={companyName}
-        setCompanyName={setCompanyName}
-        companyContext={companyContext}
-        setCompanyContext={setCompanyContext}
-        handleUpdateCompany={handleUpdateCompany}
-      /> */}
 
       {showInsufficientCreditsModal === true && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
