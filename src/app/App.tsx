@@ -20,7 +20,7 @@ import { useHandleSessionHistory } from "./hooks/useHandleSessionHistory";
 import { collection, setDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../app/firebaseConfig";
 import { signOut, onAuthStateChanged, User } from "firebase/auth";
-import Header from "./components/Header";
+import BulkUploadModal from "./components/BulkUploadModal";
 
 interface TranscriptMessage {
   id: string;
@@ -651,12 +651,32 @@ function App() {
   };
 
   // const handleInitiateCall = async () => {
-  //   if (!phoneNumber.trim()) return;
+  //   // Validate all fields
+  //   if (!phoneNumber.trim()) {
+  //     alert("❌ Please enter a phone number");
+  //     return;
+  //   }
+
+  //   if (!companyName.trim() || !companyContext.trim()) {
+  //     alert("❌ Please fill in Company Name and Company Context first!");
+  //     return;
+  //   }
+
+  //   console.log("📞 Initiating call with:", {
+  //     phoneNumber,
+  //     companyName: companyName.trim(),
+  //     companyContext: companyContext.trim()
+  //   });
+
   //   try {
   //     const res = await fetch("/api/twilio/call", {
   //       method: "POST",
   //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({ to: phoneNumber }),
+  //       body: JSON.stringify({
+  //         to: phoneNumber.trim(),
+  //         companyName: companyName.trim(),
+  //         companyContext: companyContext.trim()
+  //       }),
   //     });
 
   //     if (!res.ok) {
@@ -664,16 +684,18 @@ function App() {
   //       throw new Error(err);
   //     }
 
-  //     alert(`Call initiated to ${phoneNumber}`);
-  //   } catch (err) {
-  //     console.error("Failed to initiate call:", err);
-  //     alert("Error initiating call. Check console.");
+  //     const data = await res.json();
+  //     alert(`✅ Call initiated to ${phoneNumber}!\n\nThe AI will represent ${companyName}.`);
+  //     console.log("✅ Call initiated:", data);
+  //   } catch (err: any) {
+  //     console.error("❌ Failed to initiate call:", err);
+  //     alert(`❌ Error initiating call: ${err.message}`);
   //   }
   // };
 
-  const handleInitiateCall = async () => {
-    // Validate all fields
-    if (!phoneNumber.trim()) {
+  const handleInitiateCall = async (num?: string) => {
+    const targetNumber = num || phoneNumber.trim();
+    if (!targetNumber) {
       alert("❌ Please enter a phone number");
       return;
     }
@@ -684,9 +706,10 @@ function App() {
     }
 
     console.log("📞 Initiating call with:", {
-      phoneNumber,
+      targetNumber,
       companyName: companyName.trim(),
-      companyContext: companyContext.trim()
+      companyContext: companyContext.trim(),
+      userId: auth.currentUser?.uid || null
     });
 
     try {
@@ -694,9 +717,10 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          to: phoneNumber.trim(),
+          to: targetNumber,
           companyName: companyName.trim(),
-          companyContext: companyContext.trim()
+          companyContext: companyContext.trim(),
+          userId: auth.currentUser?.uid || null
         }),
       });
 
@@ -706,13 +730,16 @@ function App() {
       }
 
       const data = await res.json();
-      alert(`✅ Call initiated to ${phoneNumber}!\n\nThe AI will represent ${companyName}.`);
+      console.log("🚀 Twilio call response:", data);
+      alert(`✅ Call initiated to ${targetNumber}!\n\nThe AI will represent ${companyName}., with user ID: ${auth.currentUser?.uid || 'N/A'}`);
       console.log("✅ Call initiated:", data);
+      return data.callSid;
     } catch (err: any) {
       console.error("❌ Failed to initiate call:", err);
       alert(`❌ Error initiating call: ${err.message}`);
     }
   };
+
 
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
@@ -728,6 +755,7 @@ function App() {
         </div>
 
         <div className="flex items-center gap-4">
+          <BulkUploadModal onCall={handleInitiateCall} />
           <Link href="/call-list" className="flex items-center gap-1 px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors duration-300 text-sm font-semibold"
           >
             Call List
@@ -777,9 +805,9 @@ function App() {
 
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-48 bg-gray-100 rounded-lg shadow-lg py-2 border z-50 text-gray-700">
-                  <Link href="/chat-history" className="block px-4 py-2 hover:bg-gray-200">
+                  {/* <Link href="/chat-history" className="block px-4 py-2 hover:bg-gray-200">
                     Previous Chats
-                  </Link>
+                  </Link> */}
                   {userRole === "admin" && (
                     <Link href="/dashboard/admin" className="block px-4 py-2 hover:bg-gray-200">
                       Admin Dashboard
@@ -861,7 +889,6 @@ function App() {
           </button>
 
           <button
-            onClick={handleInitiateCall}
             disabled={!phoneNumber.trim() || !companyName.trim() || !companyContext.trim()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed shadow-md transition-colors duration-300"
             title={!companyName.trim() || !companyContext.trim() ? "Fill in all required fields first" : ""}

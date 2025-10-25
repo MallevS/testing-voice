@@ -34,20 +34,6 @@ export async function runGuardrailClassifier(
     },
   ];
 
-  // const response = await fetch('/api/responses', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //   },
-  //   body: JSON.stringify({
-  //     model: "ft:gpt-4o-mini-2024-07-18:personal:gpt-4o-2024-08-06-sales-rep-v8:CHabe15Z",
-  //     input: messages,
-  //     text: {
-  //       format: zodTextFormat(GuardrailOutputZod, 'output_format'),
-  //     },
-  //   }),
-  // });
-
   const response = await fetch("/api/responses", {
     method: "POST",
     headers: {
@@ -77,19 +63,7 @@ export async function runGuardrailClassifier(
 
 
   const data = await response.json();
-
-  // try {
-  //   const output = GuardrailOutputZod.parse(data.output_parsed);
-  //   return {
-  //     ...output,
-  //     testText: message,
-  //   };
-  // } catch (error) {
-  //   console.error('Error parsing the message content as GuardrailOutput:', error);
-  //   return Promise.reject('Failed to parse guardrail output.');
-  // }
   try {
-    // OpenAI Responses API returns text inside content array
     const rawText = data.output?.[0]?.content?.[0]?.text ?? "{}";
     const parsed = GuardrailOutputZod.parse(JSON.parse(rawText));
 
