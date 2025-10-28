@@ -1,41 +1,119 @@
 // import { NextResponse } from "next/server";
 
-// export async function POST() {
-//     const twiml = `
-//     <Response>
-//       <Connect>
-//         <Stream url="wss://voice-realtime-bridge.fly.dev" />
-//       </Connect>
-//     </Response>
-//   `;
-//   return new NextResponse(twiml, {
-//     headers: { "Content-Type": "text/xml" },
-//   });
+// export async function POST(req: Request) {
+//   try {
+//     const { searchParams } = new URL(req.url);
+//     const context = searchParams.get("context");
+
+//     console.log("📋 Voice route called with context:", context);
+
+//     if (!context) {
+//       console.error("❌ No context provided");
+      
+//       const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+// <Response>
+//   <Say>We're sorry, the call could not be configured properly. Please try again later.</Say>
+//   <Hangup/>
+// </Response>`;
+      
+//       return new NextResponse(errorTwiml, {
+//         status: 200,
+//         headers: { "Content-Type": "text/xml" },
+//       });
+//     }
+
+//     // Decode and log context
+//     try {
+//       const decodedContext = JSON.parse(Buffer.from(context, 'base64').toString('utf-8'));
+//       console.log("📦 Decoded context:", decodedContext);
+//     } catch (err) {
+//       console.error("⚠️ Failed to decode context:", err);
+//     }
+
+//     // Pass context to WebSocket bridge
+//     const wsUrl = `wss://voice-realtime-bridge.fly.dev/${context}`;
+//     console.log("🔗 WebSocket URL:", wsUrl);
+
+//     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+// <Response>
+//   <Connect>
+//     <Stream url="${wsUrl}" />
+//   </Connect>
+// </Response>`;
+    
+//     return new NextResponse(twiml, {
+//       status: 200,
+//       headers: { 
+//         "Content-Type": "text/xml",
+//       },
+//     });
+//   } catch (error) {
+//     console.error("❌ Error in voice route:", error);
+    
+//     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+// <Response>
+//   <Say>We're sorry, an application error has occurred. Please try again later.</Say>
+//   <Hangup/>
+// </Response>`;
+    
+//     return new NextResponse(errorTwiml, {
+//       status: 200,
+//       headers: { "Content-Type": "text/xml" },
+//     });
+//   }
 // }
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    // Twilio sends form data, not JSON
-    const formData = await req.formData();
-    
-    // Try to get from query params first (our custom params)
     const { searchParams } = new URL(req.url);
-    let companyName = searchParams.get("companyName");
-    let companyContext = searchParams.get("companyContext");
+    const context = searchParams.get("context");
 
-    // If not in query params, try form data (unlikely but safe)
-    if (!companyName) companyName = formData.get("companyName")?.toString() || "the company";
-    if (!companyContext) companyContext = formData.get("companyContext")?.toString() || "a helpful business";
+    console.log("📋 Voice route called with context:", context);
 
-    console.log("📋 Voice route called with:", { companyName, companyContext });
+    if (!context) {
+      console.error("❌ No context provided");
+      
+      const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>We're sorry, the call could not be configured properly. Please try again later.</Say>
+  <Hangup/>
+</Response>`;
+      
+      return new NextResponse(errorTwiml, {
+        status: 200,
+        headers: { "Content-Type": "text/xml" },
+      });
+    }
 
-    // 🔥 NEW APPROACH: Encode context in the URL path as base64
-    const contextData = Buffer.from(JSON.stringify({ companyName, companyContext })).toString('base64');
-    
-    // Simple URL without special characters
-    const wsUrl = `wss://voice-realtime-bridge.fly.dev/${contextData}`;
+    // 🔥 DECODE AND LOG the context to verify it has customer data
+    let decodedContext: any = {};
+    try {
+      decodedContext = JSON.parse(Buffer.from(context, 'base64').toString('utf-8'));
+      console.log("📦 Decoded context in voice route:", JSON.stringify(decodedContext, null, 2));
+      
+      // ✅ Verify customer data is present
+      if (decodedContext.customerName) {
+        console.log("✅ Customer name found:", decodedContext.customerName);
+      } else {
+        console.warn("⚠️⚠️⚠️ NO CUSTOMER NAME IN CONTEXT! ⚠️⚠️⚠️");
+      }
+      if (decodedContext.customerEmail) {
+        console.log("✅ Customer email found:", decodedContext.customerEmail);
+      } else {
+        console.warn("⚠️⚠️⚠️ NO CUSTOMER EMAIL IN CONTEXT! ⚠️⚠️⚠️");
+      }
+      if (decodedContext.callDocId) {
+        console.log("✅ Call doc ID found:", decodedContext.callDocId);
+      } else {
+        console.warn("⚠️ No call doc ID in context");
+      }
+    } catch (err) {
+      console.error("⚠️ Failed to decode context:", err);
+    }
 
+    // 🔥 CRITICAL: Pass the SAME context to WebSocket (don't modify it!)
+    const wsUrl = `wss://voice-realtime-bridge.fly.dev/${context}`;
     console.log("🔗 WebSocket URL:", wsUrl);
 
     const twiml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -54,7 +132,6 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("❌ Error in voice route:", error);
     
-    // Return error TwiML
     const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say>We're sorry, an application error has occurred. Please try again later.</Say>

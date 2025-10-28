@@ -193,22 +193,6 @@ function App() {
 
   useHandleSessionHistory();
 
-  // useEffect(() => {
-  //   let finalAgentConfig = searchParams.get("agentConfig");
-  //   if (!finalAgentConfig || !allAgentSets[finalAgentConfig]) {
-  //     finalAgentConfig = defaultAgentSetKey;
-  //     const url = new URL(window.location.toString());
-  //     url.searchParams.set("agentConfig", finalAgentConfig);
-  //     window.location.replace(url.toString());
-  //     return;
-  //   }
-
-  //   const agents = allAgentSets[finalAgentConfig];
-  //   const agentKeyToUse = agents[0]?.name || "";
-
-  //   setSelectedAgentName(agentKeyToUse);
-  //   setSelectedAgentConfigSet(agents);
-  // }, [searchParams]);
   useEffect(() => {
     let finalAgentConfig = searchParams.get("agentConfig");
 
@@ -337,70 +321,6 @@ function App() {
     }
   };
 
-
-  // const connectToRealtime = async () => {
-  //   const agentSetKey = searchParams.get("agentConfig") || "default";
-
-  //   let agentsToUse: RealtimeAgent[];
-  //   let companyNameToUse: RealtimeAgent[];
-
-  //   if (useCustomCompany && companyName.trim()) {
-  //     agentsToUse = createCustomerServiceScenario(companyName.trim(), companyContext.trim());
-  //     companyNameToUse = createCustomerServiceScenario(companyName.trim(), companyContext.trim());
-  //   } else if (sdkScenarioMap[agentSetKey]) {
-  //     agentsToUse = sdkScenarioMap[agentSetKey];
-  //     companyNameToUse = createCustomerServiceScenario(companyName.trim(), companyContext.trim());
-  //   } else {
-  //     return;
-  //   }
-
-  //   if (sessionStatus !== "DISCONNECTED") return;
-  //   setSessionStatus("CONNECTING");
-
-  //   try {
-  //     const user = auth.currentUser;
-  //     if (!user) return;
-
-  //     const enough = await hasEnoughCredits(user);
-  //     if (!enough) {
-  //       setShowInsufficientCreditsModal(true);
-  //       setSessionStatus("DISCONNECTED"); // Reset session status
-  //       return; // Stop the session before it starts
-  //     }
-
-  //     const EPHEMERAL_KEY = await fetchEphemeralKey();
-  //     if (!EPHEMERAL_KEY) return;
-
-  //     const reorderedAgents = [...agentsToUse];
-  //     const idx = reorderedAgents.findIndex((a) => a.name === selectedAgentName);
-  //     if (idx > 0) {
-  //       const [agent] = reorderedAgents.splice(idx, 1);
-  //       reorderedAgents.unshift(agent);
-  //     }
-
-  //     const guardrail = createModerationGuardrail(companyName.trim());
-
-  //     await connect({
-  //       getEphemeralKey: async () => EPHEMERAL_KEY,
-  //       initialAgents: reorderedAgents,
-  //       audioElement: sdkAudioElement,
-  //       outputGuardrails: [guardrail],
-  //       extraContext: {
-  //         addTranscriptBreadcrumb,
-  //         onError: (err: any) => {
-  //           if (err?.status === 402 || err?.message?.includes("Insufficient credits")) {
-  //             setShowInsufficientCreditsModal(true);
-  //             interrupt();
-  //           }
-  //         },
-  //       },
-  //     });
-  //   } catch (err) {
-  //     console.error("Error connecting via SDK:", err);
-  //     setSessionStatus("DISCONNECTED");
-  //   }
-  // };
-
   const disconnectFromRealtime = async () => {
     try {
       const currentTranscript: TranscriptMessage[] = transcriptItems
@@ -482,20 +402,6 @@ function App() {
       return false;
     }
   }
-
-
-  // const handleSendTextMessage = () => {
-  //   if (!userText.trim()) return;
-  //   interrupt();
-
-  //   try {
-  //     sendUserText(userText.trim());
-  //   } catch (err) {
-  //     console.error('Failed to send via SDK', err);
-  //   }
-
-  //   setUserText("");
-  // };
 
   const handleSendTextMessage = async () => {
     if (!userText.trim()) return;
@@ -634,6 +540,26 @@ function App() {
     };
   }, [sessionStatus]);
 
+  useEffect(() => {
+    const savedCompanyName = localStorage.getItem('companyName');
+    const savedCompanyContext = localStorage.getItem('companyContext');
+
+    if (savedCompanyName) setCompanyName(savedCompanyName);
+    if (savedCompanyContext) setCompanyContext(savedCompanyContext);
+  }, []);
+
+  useEffect(() => {
+    if (companyName) {
+      localStorage.setItem('companyName', companyName);
+    }
+  }, [companyName]);
+
+  useEffect(() => {
+    if (companyContext) {
+      localStorage.setItem('companyContext', companyContext);
+    }
+  }, [companyContext]);
+
   const agentSetKey = searchParams.get("agentConfig") || "default";
 
   const handleUpdateCompany = () => {
@@ -650,50 +576,21 @@ function App() {
     }
   };
 
-  // const handleInitiateCall = async () => {
-  //   // Validate all fields
-  //   if (!phoneNumber.trim()) {
-  //     alert("❌ Please enter a phone number");
-  //     return;
-  //   }
+  const handleInitiateCall = async (
+    num?: string,
+    customerName?: string,
+    customerEmail?: string
+  ) => {
+    console.log("🚀 handleInitiateCall called with:", {
+      num,
+      customerName,
+      customerEmail,
+      trimmed: {
+        name: customerName?.trim(),
+        email: customerEmail?.trim()
+      }
+    });
 
-  //   if (!companyName.trim() || !companyContext.trim()) {
-  //     alert("❌ Please fill in Company Name and Company Context first!");
-  //     return;
-  //   }
-
-  //   console.log("📞 Initiating call with:", {
-  //     phoneNumber,
-  //     companyName: companyName.trim(),
-  //     companyContext: companyContext.trim()
-  //   });
-
-  //   try {
-  //     const res = await fetch("/api/twilio/call", {
-  //       method: "POST",
-  //       headers: { "Content-Type": "application/json" },
-  //       body: JSON.stringify({
-  //         to: phoneNumber.trim(),
-  //         companyName: companyName.trim(),
-  //         companyContext: companyContext.trim()
-  //       }),
-  //     });
-
-  //     if (!res.ok) {
-  //       const err = await res.text();
-  //       throw new Error(err);
-  //     }
-
-  //     const data = await res.json();
-  //     alert(`✅ Call initiated to ${phoneNumber}!\n\nThe AI will represent ${companyName}.`);
-  //     console.log("✅ Call initiated:", data);
-  //   } catch (err: any) {
-  //     console.error("❌ Failed to initiate call:", err);
-  //     alert(`❌ Error initiating call: ${err.message}`);
-  //   }
-  // };
-
-  const handleInitiateCall = async (num?: string) => {
     const targetNumber = num || phoneNumber.trim();
     if (!targetNumber) {
       alert("❌ Please enter a phone number");
@@ -709,6 +606,8 @@ function App() {
       targetNumber,
       companyName: companyName.trim(),
       companyContext: companyContext.trim(),
+      customerName: customerName || null,
+      customerEmail: customerEmail || null,
       userId: auth.currentUser?.uid || null
     });
 
@@ -720,6 +619,8 @@ function App() {
           to: targetNumber,
           companyName: companyName.trim(),
           companyContext: companyContext.trim(),
+          customerName: customerName || null,
+          customerEmail: customerEmail || null,
           userId: auth.currentUser?.uid || null
         }),
       });
@@ -731,15 +632,16 @@ function App() {
 
       const data = await res.json();
       console.log("🚀 Twilio call response:", data);
-      alert(`✅ Call initiated to ${targetNumber}!\n\nThe AI will represent ${companyName}., with user ID: ${auth.currentUser?.uid || 'N/A'}`);
-      console.log("✅ Call initiated:", data);
+
+      const customerInfo = customerName ? ` to ${customerName}` : '';
+      alert(`✅ Call initiated${customerInfo}!\n\nThe AI will represent ${companyName}.`);
+
       return data.callSid;
     } catch (err: any) {
       console.error("❌ Failed to initiate call:", err);
       alert(`❌ Error initiating call: ${err.message}`);
     }
   };
-
 
   return (
     <div className="text-base flex flex-col h-screen bg-gray-100 text-gray-800 relative">
@@ -805,9 +707,6 @@ function App() {
 
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-48 bg-gray-100 rounded-lg shadow-lg py-2 border z-50 text-gray-700">
-                  {/* <Link href="/chat-history" className="block px-4 py-2 hover:bg-gray-200">
-                    Previous Chats
-                  </Link> */}
                   {userRole === "admin" && (
                     <Link href="/dashboard/admin" className="block px-4 py-2 hover:bg-gray-200">
                       Admin Dashboard

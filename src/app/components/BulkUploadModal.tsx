@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import BulkUploadNumbers from "./BulkUploadNumbers";
 interface BulkUploadModalProps {
-    onCall: (number: string) => Promise<string>; // <-- expect number parameter
+    onCall: (number: string, customerName?: string, customerEmail?: string) => Promise<string>; 
 }
 
 export default function BulkUploadModal({ onCall }: BulkUploadModalProps) {

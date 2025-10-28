@@ -17,9 +17,12 @@ import {
 import { auth, db } from "@/app/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
+// 🔥 UPDATED: Added customer data fields
 interface CallEntry {
     id: string;
     phoneNumber: string;
+    customerName?: string | null;      // NEW
+    customerEmail?: string | null;     // NEW
     status: "pending" | "in-progress" | "completed" | "failed" | "ringing" | "calling" | "busy" | "no-answer";
     lastCallTimestamp?: any;
     addedBy: string;
@@ -33,11 +36,15 @@ const CallList = () => {
     const [groupId, setGroupId] = useState<string | null>(null);
     const [callList, setCallList] = useState<CallEntry[]>([]);
     const [newNumber, setNewNumber] = useState("");
+    const [newName, setNewName] = useState("");           // NEW
+    const [newEmail, setNewEmail] = useState("");         // NEW
     const [isAdmin, setIsAdmin] = useState(false);
     const [assignedNumber, setAssignedNumber] = useState("");
     const [loadingGroupData, setLoadingGroupData] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
+    const [companyName, setCompanyName] = useState("");   // NEW
+    const [companyContext, setCompanyContext] = useState(""); // NEW
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (user) => {
@@ -56,7 +63,15 @@ const CallList = () => {
         return () => unsub();
     }, []);
 
-    // Load group info
+    // 🔥 NEW: Load company context from localStorage
+    useEffect(() => {
+        const savedCompanyName = localStorage.getItem('companyName');
+        const savedCompanyContext = localStorage.getItem('companyContext');
+        
+        if (savedCompanyName) setCompanyName(savedCompanyName);
+        if (savedCompanyContext) setCompanyContext(savedCompanyContext);
+    }, []);
+
     useEffect(() => {
         if (!groupId) return;
         const unsub = onSnapshot(doc(db, "groups", groupId), (snapshot) => {
@@ -69,7 +84,6 @@ const CallList = () => {
         return () => unsub();
     }, [groupId]);
 
-    // 🔥 Real-time call list updates
     useEffect(() => {
         if (!groupId) return;
         const q = query(
@@ -86,17 +100,25 @@ const CallList = () => {
         return () => unsub();
     }, [groupId]);
 
+    // 🔥 UPDATED: Add contact with customer data
     const addNumber = async () => {
         if (!newNumber.trim() || !groupId || !currentUser) return;
+        
         await addDoc(collection(db, "groups", groupId, "callList"), {
             phoneNumber: newNumber.trim(),
+            customerName: newName.trim() || null,      // NEW
+            customerEmail: newEmail.trim() || null,    // NEW
             status: "pending",
             addedBy: currentUser.uid,
             calledBy: null,
             lastCallTimestamp: null,
             callSid: null,
         });
+        
+        // Clear form
         setNewNumber("");
+        setNewName("");
+        setNewEmail("");
     };
 
     const updateStatus = async (id: string, status: string) => {
@@ -136,18 +158,26 @@ const CallList = () => {
         alert("Assigned number updated ✅");
     };
 
-    const startCall = async (id: string, phoneNumber: string) => {
+    // 🔥 UPDATED: Pass customer data to call API
+    const startCall = async (id: string, phoneNumber: string, customerName?: string | null, customerEmail?: string | null) => {
         try {
-            // Mark as "calling"
+            if (!companyName || !companyContext) {
+                alert("❌ Please set Company Name and Context on the home page first!");
+                return;
+            }
+
             await updateStatus(id, "calling");
 
-            // Trigger Twilio call
             const res = await fetch("/api/twilio/call", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     to: phoneNumber,
                     userId: currentUser?.uid,
+                    companyName: companyName,           // NEW
+                    companyContext: companyContext,     // NEW
+                    customerName: customerName || null, // NEW
+                    customerEmail: customerEmail || null, // NEW
                 }),
             });
 
@@ -156,7 +186,6 @@ const CallList = () => {
             if (res.ok && data.callSid) {
                 console.log("✅ Call started successfully", data.callSid);
 
-                // Store callSid and update to "ringing"
                 if (!groupId) throw new Error("Group ID is null");
                 await updateDoc(doc(db, "groups", groupId, "callList", id), {
                     status: "ringing",
@@ -201,13 +230,11 @@ const CallList = () => {
         return icons[status] || "⏳";
     };
 
-    // 🔥 Filter calls
     const filteredCalls = callList.filter(entry => {
         if (filterStatus === "all") return true;
         return entry.status === filterStatus;
     });
 
-    // 🔥 Stats
     const stats = {
         total: callList.length,
         pending: callList.filter(c => c.status === "pending").length,
@@ -230,7 +257,13 @@ const CallList = () => {
                 </div>
             </div>
 
-            {/* Stats Dashboard */}
+            {/* 🔥 NEW: Company Context Warning */}
+            {(!companyName || !companyContext) && (
+                <div className="mb-6 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded">
+                    ⚠️ <strong>Warning:</strong> Company Name and Context are not set. Please configure them on the home page before making calls.
+                </div>
+            )}
+
             <div className="grid grid-cols-5 gap-4 mb-6">
                 <div className="bg-white p-4 rounded-lg shadow">
                     <div className="text-2xl font-bold">{stats.total}</div>
@@ -254,7 +287,6 @@ const CallList = () => {
                 </div>
             </div>
 
-            {/* Assigned Number (Admin only) */}
             {isAdmin && !loadingGroupData && (
                 <div className="mb-6 bg-white p-4 rounded-lg shadow">
                     <label className="block mb-2 font-medium text-gray-700">
@@ -278,24 +310,41 @@ const CallList = () => {
                 </div>
             )}
 
-            {/* Add Number */}
-            <div className="flex gap-2 mb-6">
-                <input
-                    type="text"
-                    placeholder="Enter phone number (e.g., +1234567890)"
-                    value={newNumber}
-                    onChange={(e) => setNewNumber(e.target.value)}
-                    className="border rounded px-3 py-2 flex-1"
-                />
-                <button
-                    onClick={addNumber}
-                    className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-semibold"
-                >
-                    ➕ Add Number
-                </button>
+            {/* 🔥 UPDATED: Add Number Form with Customer Data */}
+            <div className="mb-6 bg-white p-4 rounded-lg shadow">
+                <h3 className="font-semibold mb-3 text-gray-800">➕ Add New Contact</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input
+                        type="text"
+                        placeholder="Phone Number (e.g., +1234567890)"
+                        value={newNumber}
+                        onChange={(e) => setNewNumber(e.target.value)}
+                        className="border rounded px-3 py-2"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Customer Name (optional)"
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        className="border rounded px-3 py-2"
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email (optional)"
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        className="border rounded px-3 py-2"
+                    />
+                    <button
+                        onClick={addNumber}
+                        disabled={!newNumber.trim()}
+                        className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-semibold disabled:bg-gray-400"
+                    >
+                        ➕ Add Contact
+                    </button>
+                </div>
             </div>
 
-            {/* Filter Buttons */}
             <div className="flex gap-2 mb-4">
                 {["all", "pending", "calling", "ringing", "in-progress", "completed", "failed"].map(status => (
                     <button
@@ -311,12 +360,14 @@ const CallList = () => {
                 ))}
             </div>
 
-            {/* Call List Table */}
+            {/* 🔥 UPDATED: Table with Customer Data Columns */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-gray-100 border-b">
                         <tr>
                             <th className="px-4 py-3 text-left font-semibold">Phone Number</th>
+                            <th className="px-4 py-3 text-left font-semibold">Customer Name</th>
+                            <th className="px-4 py-3 text-left font-semibold">Email</th>
                             <th className="px-4 py-3 text-left font-semibold">Status</th>
                             <th className="px-4 py-3 text-left font-semibold">Call SID</th>
                             <th className="px-4 py-3 text-left font-semibold">Last Updated</th>
@@ -326,7 +377,7 @@ const CallList = () => {
                     <tbody>
                         {filteredCalls.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="text-center py-8 text-gray-500">
+                                <td colSpan={7} className="text-center py-8 text-gray-500">
                                     No calls found
                                 </td>
                             </tr>
@@ -334,6 +385,8 @@ const CallList = () => {
                             filteredCalls.map((entry) => (
                                 <tr key={entry.id} className="border-b hover:bg-gray-50">
                                     <td className="px-4 py-3 font-mono">{entry.phoneNumber}</td>
+                                    <td className="px-4 py-3">{entry.customerName || "—"}</td>
+                                    <td className="px-4 py-3 text-sm">{entry.customerEmail || "—"}</td>
                                     <td className="px-4 py-3">
                                         <span className={`px-3 py-1 rounded-full text-xs font-semibold inline-flex items-center gap-1 ${getStatusBadge(entry.status)}`}>
                                             {getStatusIcon(entry.status)} {entry.status}
@@ -359,7 +412,12 @@ const CallList = () => {
                                             )}
                                             {entry.status === "pending" && (
                                                 <button
-                                                    onClick={() => startCall(entry.id, entry.phoneNumber)}
+                                                    onClick={() => startCall(
+                                                        entry.id, 
+                                                        entry.phoneNumber,
+                                                        entry.customerName,
+                                                        entry.customerEmail
+                                                    )}
                                                     className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
                                                 >
                                                     📞 Start Call
@@ -382,7 +440,6 @@ const CallList = () => {
                 </table>
             </div>
 
-            {/* Transcript Modal */}
             {selectedCallId && (
                 <TranscriptModal
                     callSid={selectedCallId}
@@ -393,7 +450,6 @@ const CallList = () => {
     );
 };
 
-// 🔥 Transcript Modal Component
 function TranscriptModal({ callSid, onClose }: { callSid: string; onClose: () => void }) {
     const [transcript, setTranscript] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -401,7 +457,6 @@ function TranscriptModal({ callSid, onClose }: { callSid: string; onClose: () =>
     useEffect(() => {
         const fetchTranscript = async () => {
             try {
-                // Find call document by callSid
                 const callsRef = collection(db, "calls");
                 const q = query(callsRef, where("callSid", "==", callSid));
                 const callsSnapshot = await getDocs(q);
@@ -421,7 +476,6 @@ function TranscriptModal({ callSid, onClose }: { callSid: string; onClose: () =>
                     ...doc.data()
                 }));
 
-                // Sort by timestamp
                 messages.sort((a: any, b: any) => {
                     if (!a.timestamp || !b.timestamp) return 0;
                     return a.timestamp.toMillis() - b.timestamp.toMillis();
@@ -441,7 +495,6 @@ function TranscriptModal({ callSid, onClose }: { callSid: string; onClose: () =>
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col">
-                {/* Header */}
                 <div className="p-6 border-b flex justify-between items-center">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-800">Call Transcript</h2>
@@ -455,7 +508,6 @@ function TranscriptModal({ callSid, onClose }: { callSid: string; onClose: () =>
                     </button>
                 </div>
 
-                {/* Transcript Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     {loading ? (
                         <div className="flex items-center justify-center h-full">
@@ -494,7 +546,6 @@ function TranscriptModal({ callSid, onClose }: { callSid: string; onClose: () =>
                     )}
                 </div>
 
-                {/* Footer */}
                 <div className="p-4 border-t">
                     <button
                         onClick={onClose}
