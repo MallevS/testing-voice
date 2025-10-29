@@ -12,8 +12,9 @@ export async function POST(req: Request) {
       companyName, 
       companyContext, 
       userId,
-      customerName,    // 🔥 NEW
-      customerEmail    // 🔥 NEW
+      customerName,   
+      customerEmail,
+      callListDocId,   
     } = body;
 
     console.log("📞 Initiating call with:", { 
@@ -21,7 +22,8 @@ export async function POST(req: Request) {
       companyName, 
       companyContext,
       customerName,
-      customerEmail 
+      customerEmail,
+      callListDocId
     });
 
     if (!to) {
@@ -40,7 +42,6 @@ export async function POST(req: Request) {
 
     const client = twilio(accountSid, authToken);
 
-    // 🔥 Create Firebase call document with customer data
     let callDocId: string | null = null;
     try {
       const callsRef = collection(db, "calls");
@@ -48,9 +49,10 @@ export async function POST(req: Request) {
         phoneNumber: to,
         companyName: companyName || "Unknown",
         companyContext: companyContext || "",
-        customerName: customerName || null,        // 🔥 SAVE CUSTOMER NAME
-        customerEmail: customerEmail || null,      // 🔥 SAVE CUSTOMER EMAIL
+        customerName: customerName || null,       
+        customerEmail: customerEmail || null,     
         userId: userId || null,
+        callListDocId: callListDocId || null,
         status: "initiating",
         callSid: null,
         timestamp: serverTimestamp(),
@@ -61,7 +63,6 @@ export async function POST(req: Request) {
       console.error("⚠️ Failed to create Firebase doc (non-critical):", err);
     }
 
-    // 🔥 Pass ALL context via URL (including customer data)
     const contextData = {
       companyName: companyName || "the company",
       companyContext: companyContext || "a helpful business",
@@ -95,7 +96,6 @@ export async function POST(req: Request) {
 
     console.log("✅ Call created successfully:", call.sid);
 
-    // Update Firebase with Twilio callSid
     if (callDocId) {
       try {
         await updateDoc(doc(db, "calls", callDocId), {

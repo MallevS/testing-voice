@@ -28,13 +28,12 @@ export async function POST(req: NextRequest) {
 
     console.log("📞 Twilio Webhook Received:", { callSid, callStatus, callDuration, from, to });
 
-    // 🔥 CRITICAL: Map Twilio status to app status
     const statusMap: Record<string, string> = {
       'queued': 'pending',
-      'initiated': 'calling',      // NEW
+      'initiated': 'calling',
       'ringing': 'ringing',
       'in-progress': 'in-progress',
-      'answered': 'in-progress',   // NEW - treat answered as in-progress
+      'answered': 'in-progress',
       'completed': 'completed',
       'busy': 'busy',
       'no-answer': 'no-answer',
@@ -46,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`🔄 Mapping Twilio status "${callStatus}" → "${mappedStatus}"`);
 
-    // 🔥 FIX 1: Find and update call document
+    // 🔥 FIX: Find call document
     const callsSnapshot = await db.collection("calls")
       .where("callSid", "==", callSid)
       .limit(1)
@@ -64,34 +63,56 @@ export async function POST(req: NextRequest) {
 
       console.log(`✅ Updated call document to status: ${mappedStatus}`);
 
-      // 🔥 FIX 2: Update callList entry in real-time
-      if (callData.userId) {
+      // 🔥 CRITICAL FIX: Use callListDocId directly if available
+      if (callData.userId && callData.callListDocId) {
         const userDoc = await db.collection("users").doc(callData.userId).get();
         const userData = userDoc.data();
-        
+
         if (userData?.groupId) {
-          const callListSnapshot = await db.collection("groups")
+          // 🔥 DIRECT UPDATE using the callListDocId we saved
+          const callListRef = db.collection("groups")
             .doc(userData.groupId)
             .collection("callList")
-            .where("callSid", "==", callSid)
-            .limit(1)
-            .get();
+            .doc(callData.callListDocId);
 
-          if (!callListSnapshot.empty) {
-            const updateData: any = {
-              status: mappedStatus,
-              lastCallTimestamp: admin.firestore.FieldValue.serverTimestamp(),
-            };
+          const updateData: any = {
+            status: mappedStatus,
+            lastCallTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+          };
 
-            await callListSnapshot.docs[0].ref.update(updateData);
+          console.log(`🔥 UPDATING CALLLIST DOCUMENT DIRECTLY:`, {
+            groupId: userData.groupId,
+            docId: callData.callListDocId,
+            callSid: callSid,
+            newStatus: mappedStatus
+          });
+
+          try {
+            await callListRef.update(updateData);
             console.log(`✅ Updated callList status to: ${mappedStatus}`);
-          } else {
-            console.warn(`⚠️ No callList entry found for callSid: ${callSid}`);
+          } catch (err) {
+            console.error(`❌ Failed to update callList doc ${callData.callListDocId}:`, err);
+            
+            // 🔥 FALLBACK: Try to find by callSid
+            console.log(`⚠️ Falling back to callSid search...`);
+            const callListSnapshot = await db.collection("groups")
+              .doc(userData.groupId)
+              .collection("callList")
+              .where("callSid", "==", callSid)
+              .limit(1)
+              .get();
+
+            if (!callListSnapshot.empty) {
+              await callListSnapshot.docs[0].ref.update(updateData);
+              console.log(`✅ Updated callList via fallback`);
+            }
           }
         }
+      } else {
+        console.warn(`⚠️ No callListDocId found in call data for SID: ${callSid}`);
       }
 
-      // 🔥 FIX 3: Only bill on completed calls
+      // 🔥 Only bill on completed calls
       if (callStatus.toLowerCase() === "completed" && callDuration) {
         const durationSeconds = parseInt(callDuration, 10);
         const cost = calculateTwilioCost(durationSeconds);
@@ -103,7 +124,6 @@ export async function POST(req: NextRequest) {
           completedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-        // Deduct credits and log activity
         if (callData.userId) {
           const userDoc = await db.collection("users").doc(callData.userId).get();
           if (userDoc.exists) {
@@ -118,7 +138,6 @@ export async function POST(req: NextRequest) {
                 const groupData = groupSnap.data() || {};
                 const currentCredits = groupData.credits ?? 0;
 
-                // Log activity
                 const activityRef = groupRef.collection("activity").doc();
                 tx.set(activityRef, {
                   userId: callData.userId,
@@ -136,7 +155,6 @@ export async function POST(req: NextRequest) {
                   timestamp: admin.firestore.FieldValue.serverTimestamp(),
                 });
 
-                // Deduct credits
                 const newCredits = Math.max(0, currentCredits - cost);
                 tx.update(groupRef, { credits: newCredits });
 

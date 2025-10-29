@@ -91,10 +91,15 @@ const CallList = () => {
             orderBy("lastCallTimestamp", "desc")
         );
         const unsub = onSnapshot(q, (snapshot) => {
-            const calls: CallEntry[] = snapshot.docs.map((d) => ({
-                id: d.id,
-                ...d.data(),
-            })) as CallEntry[];
+            console.log("🔥 CallList snapshot update received!", snapshot.docs.length);
+            const calls: CallEntry[] = snapshot.docs.map((d) => {
+                const data = d.data();
+                console.log(`📞 Call ${d.id}: ${data.phoneNumber} - Status: ${data.status}`);
+                return {
+                    id: d.id,
+                    ...data,
+                };
+            }) as CallEntry[];
             setCallList(calls);
         });
         return () => unsub();
@@ -174,10 +179,11 @@ const CallList = () => {
                 body: JSON.stringify({
                     to: phoneNumber,
                     userId: currentUser?.uid,
-                    companyName: companyName,           // NEW
-                    companyContext: companyContext,     // NEW
-                    customerName: customerName || null, // NEW
-                    customerEmail: customerEmail || null, // NEW
+                    companyName: companyName,           
+                    companyContext: companyContext,     
+                    customerName: customerName || null, 
+                    customerEmail: customerEmail || null, 
+                    callListDocId: id, 
                 }),
             });
 
@@ -190,7 +196,40 @@ const CallList = () => {
                 await updateDoc(doc(db, "groups", groupId, "callList", id), {
                     status: "ringing",
                     callSid: data.callSid,
+                    lastCallTimestamp: new Date(),
                 });
+
+                const pollStatus = async () => {
+                    let attempts = 0;
+                    const maxAttempts = 180; // 6 minutes max
+    
+                    while (attempts < maxAttempts) {
+                        try {
+                            const res = await fetch(`/api/twilio/call-status?callSid=${data.callSid}`);
+                            if (!res.ok) throw new Error("Failed to fetch status");
+    
+                            const statusData = await res.json();
+                            const currentStatus = statusData.status;
+    
+                            console.log(`📊 Polling status for ${phoneNumber}: ${currentStatus}`);
+    
+                            // Terminal statuses
+                            if (['completed', 'failed', 'busy', 'no-answer', 'canceled'].includes(currentStatus)) {
+                                console.log(`✅ Call ${currentStatus} for ${phoneNumber}`);
+                                break;
+                            }
+    
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            attempts++;
+                        } catch (err) {
+                            console.error("❌ Error polling status:", err);
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                            attempts++;
+                        }
+                    }
+                };
+
+                pollStatus();
             } else {
                 console.error("❌ Error starting call:", data.error);
                 alert(`Error: ${data.error}`);
