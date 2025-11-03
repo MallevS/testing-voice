@@ -62,7 +62,7 @@ function App() {
         mute(true);
       } catch { }
 
-      setUserText(""); // Clear input
+      setUserText("");
       setIsPTTUserSpeaking(false);
     };
 
@@ -244,7 +244,7 @@ function App() {
     return data.client_secret.value;
   };
 
-  const MINIMUM_CREDITS_REQUIRED = 5; // $5 minimum to start
+  const MINIMUM_CREDITS_REQUIRED = 5; 
 
   const connectToRealtime = async () => {
     const agentSetKey = searchParams.get("agentConfig") || "default";
@@ -269,7 +269,6 @@ function App() {
       const user = auth.currentUser;
       if (!user) return;
 
-      // Check group credits first with minimum requirement
       const userSnap = await getDoc(doc(db, "users", user.uid));
       if (!userSnap.exists) throw new Error("User not found");
 
@@ -284,8 +283,8 @@ function App() {
 
       if (currentCredits < MINIMUM_CREDITS_REQUIRED) {
         setShowInsufficientCreditsModal(true);
-        setSessionStatus("DISCONNECTED"); // Prevent connecting
-        return; // Stop the session before it starts
+        setSessionStatus("DISCONNECTED");
+        return; 
       }
 
       const EPHEMERAL_KEY = await fetchEphemeralKey();
@@ -409,7 +408,7 @@ function App() {
     interrupt();
 
     try {
-      await sendUserText(userText.trim()); // <-- make sure this is async
+      await sendUserText(userText.trim()); 
     } catch (err: any) {
       console.error('Failed to send via SDK', err);
       if (err?.status === 402 || err?.message?.includes("Insufficient credits")) {

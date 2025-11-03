@@ -26,7 +26,6 @@ export default function LoginPage() {
       await handlePostLogin(userCredential.user.uid);
     } catch (err: any) {
       console.error("Firebase login error object:", err);
-      // Firebase error codes give more info
       if (err.code) {
         console.error("Firebase error code:", err.code);
       }
@@ -115,7 +114,6 @@ export default function LoginPage() {
           onClick={handleGoogleLogin}
         >
           <span className="rounded-full p-1 mr-3 flex items-center">
-            {/* Google G icon SVG */}
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-6 w-6">
               <path fill="white" d="M24 9.5c3.54 0 6.82 1.23 9.33 3.41l7-7C36.44 2.26 30.57 0 24 0 14.83 0 6.82 5.62 2.73 13.66l8.38 6.51C13.08 13.37 18.17 9.5 24 9.5z" />
               <path fill="white" d="M46.4 24.56c0-1.46-.13-2.86-.37-4.22H24v8.31h12.65c-.54 3-2.23 5.53-4.6 7.22l7.37 5.73C43.3 39.17 46.4 32.59 46.4 24.56z" />

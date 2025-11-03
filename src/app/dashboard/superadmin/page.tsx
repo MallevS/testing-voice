@@ -37,10 +37,6 @@ interface Activity {
 export default function SuperadminDashboard() {
   const router = useRouter();
   const auth = getAuth();
-
-  // -----------------------------
-  // Form states
-  // -----------------------------
   const [groupName, setGroupName] = useState("");
   const [groupCredits, setGroupCredits] = useState<number | "">("");
   const [selectedAdmins, setSelectedAdmins] = useState<string[]>([]);
@@ -57,11 +53,8 @@ export default function SuperadminDashboard() {
   const showModal = (msg: string) => setModalMessage(msg);
   const closeModal = () => setModalMessage(null);
 
-  const CREDIT_TO_USD = 1; // 1 credit = $1
+  const CREDIT_TO_USD = 1;
 
-  // -----------------------------
-  // Fetch all admins
-  // -----------------------------
   useEffect(() => {
     const fetchAdmins = async () => {
       const snapshot = await getDocs(collection(db, "users"));
@@ -77,9 +70,6 @@ export default function SuperadminDashboard() {
     fetchAdmins();
   }, []);
 
-  // -----------------------------
-  // Fetch all groups & stats
-  // -----------------------------
   useEffect(() => {
     const fetchGroups = async () => {
       const groupSnapshot = await getDocs(collection(db, "groups"));
@@ -89,7 +79,6 @@ export default function SuperadminDashboard() {
       for (const gDoc of groupSnapshot.docs) {
         const gData: any = gDoc.data();
 
-        // fetch admin users
         const adminUsers: User[] = await Promise.all(
           (gData.admins || []).map(async (uid: string) => {
             const docSnap = await getDoc(doc(db, "users", uid));
@@ -97,7 +86,6 @@ export default function SuperadminDashboard() {
           })
         );
 
-        // fetch normal users
         const normalUsers: User[] = await Promise.all(
           (gData.users || []).map(async (uid: string) => {
             const docSnap = await getDoc(doc(db, "users", uid));
@@ -105,7 +93,6 @@ export default function SuperadminDashboard() {
           })
         );
 
-        // fetch activities
         const actRef = collection(db, "groups", gDoc.id, "activity");
         const q = query(actRef, orderBy("timestamp", "desc"), limit(50));
         const actSnap = await getDocs(q);
@@ -151,9 +138,6 @@ export default function SuperadminDashboard() {
     fetchGroups();
   }, []);
 
-  // -----------------------------
-  // Create Admin
-  // -----------------------------
   const handleCreateAdmin = async () => {
     if (!newAdminName || !newAdminEmail || !newAdminPassword) return showModal("Enter all fields");
 
@@ -184,9 +168,6 @@ export default function SuperadminDashboard() {
     }
   };
 
-  // -----------------------------
-  // Create Group
-  // -----------------------------
   const handleCreateGroup = async () => {
     if (!groupName || !selectedAdmins.length || !groupCredits) return showModal("Fill all fields");
 
@@ -207,7 +188,6 @@ export default function SuperadminDashboard() {
       showModal("Group created successfully!");
       setGroupName(""); setGroupCredits(""); setSelectedAdmins([]);
 
-      // Refresh
       const snapshot = await getDocs(collection(db, "groups"));
       const groupsData: Group[] = [];
       snapshot.forEach(doc => groupsData.push({ id: doc.id, ...doc.data() } as Group));
@@ -227,7 +207,6 @@ export default function SuperadminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Admin & Group Creation */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">Create Group & Admins</h2>
           <input type="text" placeholder="Group Name" value={groupName} onChange={e => setGroupName(e.target.value)}
@@ -270,7 +249,6 @@ export default function SuperadminDashboard() {
           </button>
         </div>
 
-        {/* Group Stats & Activity */}
         <div className="space-y-6">
           {groups.map(g => (
             <div key={g.id} className="bg-white p-6 rounded-lg shadow-md">

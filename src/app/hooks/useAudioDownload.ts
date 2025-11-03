@@ -4,12 +4,6 @@ import { convertWebMBlobToWav } from "../lib/audioUtils";
 function useAudioDownload() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-
-  /**
-   * Starts recording by combining the provided remote stream with
-   * the microphone audio.
-   * @param remoteStream - The remote MediaStream (e.g., from the audio element).
-   */
   const startRecording = async (remoteStream: MediaStream) => {
     let micStream: MediaStream;
     try {

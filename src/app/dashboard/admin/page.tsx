@@ -50,9 +50,8 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
 
-  const CREDIT_TO_USD = 1; // 1 credit = $1 for display
+  const CREDIT_TO_USD = 1; 
 
-  // Fetch group, users & activities
   useEffect(() => {
     setLoading(true);
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -77,7 +76,6 @@ export default function AdminDashboard() {
           return;
         }
 
-        // Get group
         const groupDoc = await getDoc(doc(db, "groups", userData.groupId));
         if (!groupDoc.exists()) {
           setError("Group not found.");
@@ -88,7 +86,6 @@ export default function AdminDashboard() {
         const { id, ...restGroupData } = groupData;
         setGroup({ id: groupDoc.id, ...restGroupData });
 
-        // Get users
         const usersList: User[] = [];
         if (groupData.users?.length) {
           const usersSnapshot = await getDocs(
@@ -107,7 +104,6 @@ export default function AdminDashboard() {
         }
         setGroupUsers(usersList);
 
-        // Fetch recent activities
         const activityRef = collection(db, "groups", userData.groupId, "activity");
         const activitySnap = await getDocs(query(activityRef, orderBy("timestamp", "desc"), limit(50)));
         const acts: Activity[] = activitySnap.docs.map((d) => {
@@ -157,7 +153,6 @@ export default function AdminDashboard() {
       setName("");
       setPassword("");
 
-      // Refresh users
       if (group.users?.length) {
         const usersSnapshot = await getDocs(
           query(collection(db, "users"), where("__name__", "in", group.users))
@@ -180,7 +175,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Mini stats calculations
   const totalSpend = activities.reduce((sum, a) => sum + a.cost, 0);
   const todayStr = new Date().toDateString();
   const activeUsers = Array.from(
@@ -217,7 +211,6 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
       </div>
 
-      {/* KPI Panel */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow-md flex flex-col items-center">
           <span className="text-gray-500 text-sm">Total Users</span>
@@ -241,9 +234,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Group Info & Add User */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Group Info */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-semibold mb-4">Group Info</h2>
           <p><strong>Group Name:</strong> {group.name}</p>
@@ -252,7 +243,6 @@ export default function AdminDashboard() {
           <p><strong>Top User:</strong> {topUser.userName} (${topUser.cost.toFixed(2)})</p>
         </div>
 
-        {/* Add User Form */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Add User</h2>
@@ -299,7 +289,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Recent Activity */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
         {activities.length > 0 ? (
@@ -349,7 +338,6 @@ export default function AdminDashboard() {
               </div>
             ))}
 
-            {/* Pagination */}
             <div className="flex justify-center mt-4 gap-2">
               <button
                 className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"

@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
-    // Create the group
     const groupRef = await addDoc(collection(db, "groups"), {
       name: groupName,
       admins: adminUids,
@@ -22,7 +21,6 @@ export async function POST(req: NextRequest) {
       createdBy
     });
 
-    // Update each admin's groupId in their user doc
     await Promise.all(
       adminUids.map(async (uid: string) => {
         const userRef = doc(db, "users", uid);

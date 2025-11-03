@@ -11,7 +11,7 @@ interface Group {
     id: string;
     name: string;
     adminEmail: string;
-    credits: number;      // Remaining credits
+    credits: number;     
     usedToday: number;
     members: { email: string }[];
 }
@@ -38,7 +38,7 @@ export default function UserDashboard() {
       currentPage * itemsPerPage
     );
 
-    const CREDIT_TO_USD = 1; // 1 credit = $1 for display purposes
+    const CREDIT_TO_USD = 1;
 
     useEffect(() => {
         const auth = getAuth();
@@ -132,7 +132,7 @@ export default function UserDashboard() {
 
     return (
         <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 via-white to-purple-50 text-gray-900">
-            {/* Welcome Banner */}
+         
             <div className="text-black p-6 flex items-center justify-start mb-5 gap-5">
                 <button
                     onClick={() => router.push("/")}
@@ -156,7 +156,6 @@ export default function UserDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Group Overview */}
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h2 className="text-xl font-semibold mb-4">Group Overview</h2>
                     {group ? (
@@ -177,7 +176,6 @@ export default function UserDashboard() {
                     )}
                 </div>
 
-                {/* Group Members */}
                 <div className="bg-white p-6 rounded-lg shadow-md">
                     <h2 className="text-xl font-semibold mb-4">Group Members</h2>
                     {group?.members?.length ? (
@@ -197,7 +195,6 @@ export default function UserDashboard() {
                 </div>
             </div>
 
-            {/* Recent Activity */}
             <div className="mt-6">
                 <h2 className="text-xl font-semibold mb-4">Recent Activity</h2>
                 {activities.length > 0 ? (
@@ -249,7 +246,6 @@ export default function UserDashboard() {
                             </div>
                         ))}
 
-                        {/* Pagination */}
                         <div className="flex justify-center mt-4 gap-2">
                             <button
                                 className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300 disabled:opacity-50"

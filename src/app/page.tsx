@@ -7,17 +7,6 @@ import { redirect } from "next/navigation";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "../../src/app/firebaseConfig";
-// export default function Page() {
-//   return (
-//     <Suspense fallback={<div>Loading...</div>}>
-//       <TranscriptProvider>
-//         <EventProvider>
-//           <App />
-//         </EventProvider>
-//       </TranscriptProvider>
-//     </Suspense>
-//   );
-// }
 
 export default function Page() {
   const router = useRouter();
@@ -27,7 +16,6 @@ export default function Page() {
       if (!user) {
         router.push("/login");
       } else {
-        // Later, fetch role from Firestore
         router.push("/?agentConfig=customerServiceRetail");
       }
     });

@@ -154,75 +154,7 @@ export default function BulkUploadNumbers({ onClose, onCall }: BulkUploadNumbers
 
     return 'failed';
   };
-  // const handleCallSelected = async () => {
-  //   if (!onCall || isCalling || !groupId || selectedContacts.size === 0) return;
-
-  //   setIsCalling(true);
-
-  //   const selectedIndexes = Array.from(selectedContacts).sort((a, b) => a - b);
-
-  //   for (const idx of selectedIndexes) {
-  //     const contact = contacts[idx];
-
-  //     setContacts(prev =>
-  //       prev.map((c, i) => i === idx ? { ...c, status: 'calling' } : c)
-  //     );
-
-  //     try {
-  //       console.log(`📞 Calling ${contact.phoneNumber}...`);
-
-  //       const callSid = await onCall(
-  //         contact.phoneNumber,
-  //         contact.customerName,
-  //         contact.customerEmail
-  //       );
-
-  //       setContacts(prev =>
-  //         prev.map((c, i) =>
-  //           i === idx ? { ...c, callSid, status: 'ringing' } : c
-  //         )
-  //       );
-
-  //       if (contact.firestoreId) {
-  //         await updateFirestoreStatus(contact.firestoreId, 'ringing', callSid);
-  //       }
-
-  //       const finalStatus = await pollCallStatus(callSid, idx);
-
-  //       const mappedStatus = finalStatus === 'completed' ? 'completed' : 'failed';
-
-  //       setContacts(prev =>
-  //         prev.map((c, i) =>
-  //           i === idx ? {
-  //             ...c,
-  //             status: mappedStatus,
-  //             error: finalStatus !== 'completed' ? finalStatus : undefined
-  //           } : c
-  //         )
-  //       );
-
-  //       if (contact.firestoreId) {
-  //         await updateFirestoreStatus(contact.firestoreId, mappedStatus);
-  //       }
-
-  //       console.log(`✅ Call to ${contact.phoneNumber} ${finalStatus}`);
-
-  //       await sleep(2000);
-
-  //     } catch (err: any) {
-  //       console.error(`❌ Failed to call ${contact.phoneNumber}:`, err);
-  //       setContacts(prev =>
-  //         prev.map((c, i) =>
-  //           i === idx ? { ...c, status: 'failed', error: err.message } : c
-  //         )
-  //       );
-  //     }
-  //   }
-
-  //   setIsCalling(false);
-  //   setSelectedContacts(new Set());
-  //   console.log("✅ All selected calls completed!");
-  // };
+  
   const handleCallSelected = async () => {
     if (!onCall || isCalling || !groupId || selectedContacts.size === 0) return;
 
@@ -233,7 +165,6 @@ export default function BulkUploadNumbers({ onClose, onCall }: BulkUploadNumbers
     for (const idx of selectedIndexes) {
       const contact = contacts[idx];
 
-      // 🔥 CRITICAL FIX: Save to callList FIRST if not already saved
       if (!contact.firestoreId) {
         console.log(`💾 Saving ${contact.phoneNumber} to call list first...`);
 
@@ -249,7 +180,6 @@ export default function BulkUploadNumbers({ onClose, onCall }: BulkUploadNumbers
             callSid: null,
           });
 
-          // Update local state with firestoreId
           setContacts(prev =>
             prev.map((c, i) => i === idx ? { ...c, firestoreId: docRef.id } : c)
           );
@@ -272,7 +202,6 @@ export default function BulkUploadNumbers({ onClose, onCall }: BulkUploadNumbers
       try {
         console.log(`📞 Calling ${contact.phoneNumber}...`);
 
-        // 🔥 Pass the firestoreId as callListDocId
         const callSid = await onCall(
           contact.phoneNumber,
           contact.customerName,
@@ -397,7 +326,7 @@ export default function BulkUploadNumbers({ onClose, onCall }: BulkUploadNumbers
         action: `Call to ${phoneNumber}`,
         model: "twilio-call",
         timestamp: new Date(),
-        cost: 0.05, // Adjust based on actual call cost
+        cost: 0.05, 
         audioSeconds: 0,
         phoneNumber: phoneNumber,
         status: status,

@@ -17,12 +17,11 @@ import {
 import { auth, db } from "@/app/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
 
-// 🔥 UPDATED: Added customer data fields
 interface CallEntry {
     id: string;
     phoneNumber: string;
-    customerName?: string | null;      // NEW
-    customerEmail?: string | null;     // NEW
+    customerName?: string | null;     
+    customerEmail?: string | null;    
     status: "pending" | "in-progress" | "completed" | "failed" | "ringing" | "calling" | "busy" | "no-answer";
     lastCallTimestamp?: any;
     addedBy: string;
@@ -36,15 +35,15 @@ const CallList = () => {
     const [groupId, setGroupId] = useState<string | null>(null);
     const [callList, setCallList] = useState<CallEntry[]>([]);
     const [newNumber, setNewNumber] = useState("");
-    const [newName, setNewName] = useState("");           // NEW
-    const [newEmail, setNewEmail] = useState("");         // NEW
+    const [newName, setNewName] = useState("");         
+    const [newEmail, setNewEmail] = useState("");       
     const [isAdmin, setIsAdmin] = useState(false);
     const [assignedNumber, setAssignedNumber] = useState("");
     const [loadingGroupData, setLoadingGroupData] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>("all");
     const [selectedCallId, setSelectedCallId] = useState<string | null>(null);
-    const [companyName, setCompanyName] = useState("");   // NEW
-    const [companyContext, setCompanyContext] = useState(""); // NEW
+    const [companyName, setCompanyName] = useState("");  
+    const [companyContext, setCompanyContext] = useState("");
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (user) => {
@@ -63,7 +62,6 @@ const CallList = () => {
         return () => unsub();
     }, []);
 
-    // 🔥 NEW: Load company context from localStorage
     useEffect(() => {
         const savedCompanyName = localStorage.getItem('companyName');
         const savedCompanyContext = localStorage.getItem('companyContext');
@@ -105,14 +103,13 @@ const CallList = () => {
         return () => unsub();
     }, [groupId]);
 
-    // 🔥 UPDATED: Add contact with customer data
     const addNumber = async () => {
         if (!newNumber.trim() || !groupId || !currentUser) return;
         
         await addDoc(collection(db, "groups", groupId, "callList"), {
             phoneNumber: newNumber.trim(),
-            customerName: newName.trim() || null,      // NEW
-            customerEmail: newEmail.trim() || null,    // NEW
+            customerName: newName.trim() || null,     
+            customerEmail: newEmail.trim() || null,   
             status: "pending",
             addedBy: currentUser.uid,
             calledBy: null,
@@ -120,7 +117,6 @@ const CallList = () => {
             callSid: null,
         });
         
-        // Clear form
         setNewNumber("");
         setNewName("");
         setNewEmail("");
@@ -163,7 +159,6 @@ const CallList = () => {
         alert("Assigned number updated ✅");
     };
 
-    // 🔥 UPDATED: Pass customer data to call API
     const startCall = async (id: string, phoneNumber: string, customerName?: string | null, customerEmail?: string | null) => {
         try {
             if (!companyName || !companyContext) {
@@ -201,7 +196,7 @@ const CallList = () => {
 
                 const pollStatus = async () => {
                     let attempts = 0;
-                    const maxAttempts = 180; // 6 minutes max
+                    const maxAttempts = 180; 
     
                     while (attempts < maxAttempts) {
                         try {
@@ -213,7 +208,6 @@ const CallList = () => {
     
                             console.log(`📊 Polling status for ${phoneNumber}: ${currentStatus}`);
     
-                            // Terminal statuses
                             if (['completed', 'failed', 'busy', 'no-answer', 'canceled'].includes(currentStatus)) {
                                 console.log(`✅ Call ${currentStatus} for ${phoneNumber}`);
                                 break;
@@ -296,7 +290,6 @@ const CallList = () => {
                 </div>
             </div>
 
-            {/* 🔥 NEW: Company Context Warning */}
             {(!companyName || !companyContext) && (
                 <div className="mb-6 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded">
                     ⚠️ <strong>Warning:</strong> Company Name and Context are not set. Please configure them on the home page before making calls.
@@ -349,7 +342,6 @@ const CallList = () => {
                 </div>
             )}
 
-            {/* 🔥 UPDATED: Add Number Form with Customer Data */}
             <div className="mb-6 bg-white p-4 rounded-lg shadow">
                 <h3 className="font-semibold mb-3 text-gray-800">➕ Add New Contact</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -399,7 +391,6 @@ const CallList = () => {
                 ))}
             </div>
 
-            {/* 🔥 UPDATED: Table with Customer Data Columns */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
                 <table className="w-full">
                     <thead className="bg-gray-100 border-b">

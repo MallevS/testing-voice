@@ -22,13 +22,11 @@ export async function POST(req: Request) {
       });
     }
 
-    // 🔥 DECODE AND LOG the context to verify it has customer data
     let decodedContext: any = {};
     try {
       decodedContext = JSON.parse(Buffer.from(context, 'base64').toString('utf-8'));
       console.log("📦 Decoded context in voice route:", JSON.stringify(decodedContext, null, 2));
       
-      // ✅ Verify customer data is present
       if (decodedContext.customerName) {
         console.log("✅ Customer name found:", decodedContext.customerName);
       } else {
@@ -48,7 +46,6 @@ export async function POST(req: Request) {
       console.error("⚠️ Failed to decode context:", err);
     }
 
-    // 🔥 CRITICAL: Pass the SAME context to WebSocket (don't modify it!)
     const wsUrl = `wss://voice-realtime-bridge.fly.dev/${context}`;
     console.log("🔗 WebSocket URL:", wsUrl);
 

@@ -12,4 +12,4 @@ if (!getApps().length) {
 }
 
 export const dbAdmin = getFirestore();
-export const { serverTimestamp, arrayUnion } = FieldValue; // <- fixed
+export const { serverTimestamp, arrayUnion } = FieldValue; 

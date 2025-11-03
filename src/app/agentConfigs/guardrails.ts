@@ -38,7 +38,7 @@ export async function runGuardrailClassifier(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${userToken}`, // <-- required
+      Authorization: `Bearer ${userToken}`,
     },
     body: JSON.stringify({
       model:

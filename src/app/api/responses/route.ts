@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { db, auth } from "../../firebaseAdmin"; // firebase-admin wrapper
+import { db, auth } from "../../firebaseAdmin";
 import admin from "firebase-admin";
 import { calculateOpenAICost } from "../../utils/cost";
 
@@ -9,17 +9,6 @@ interface UserData {
   [key: string]: any;
 }
 
-// export async function POST(req: NextRequest) {
-//   const body = await req.json();
-
-//   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-//   if (body.text?.format?.type === 'json_schema') {
-//     return await structuredResponse(openai, body);
-//   } else {
-//     return await textResponse(openai, body);
-//   }
-// }
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -32,7 +21,6 @@ export async function POST(req: NextRequest) {
     const decoded = await auth.verifyIdToken(idToken);
     const uid = decoded.uid;
 
-    // Fetch user & group
     const userDoc = await db.collection("users").doc(uid).get();
     if (!userDoc.exists) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -49,11 +37,9 @@ export async function POST(req: NextRequest) {
       const groupData = groupSnap.data() || {};
       const currentCredits = groupData.credits ?? 0;
 
-      // Call OpenAI
       const response: any = await openai.responses.create({ ...body, stream: false });
       const usage = response.usage || { input_tokens: 0, output_tokens: 0 };
 
-      // Calculate audio duration
       let audioSeconds = usage.audio_seconds ?? 0;
       if (audioSeconds === 0 && response.output) {
         for (const item of response.output) {
@@ -78,7 +64,6 @@ export async function POST(req: NextRequest) {
         audioSeconds
       );
 
-      // Log activity first
       const activityRef = groupRef.collection("activity").doc();
       tx.set(activityRef, {
         userId: uid,
@@ -88,14 +73,12 @@ export async function POST(req: NextRequest) {
         outputTokens: usage.output_tokens,
         audioSeconds,
         cost,
-        success: currentCredits >= cost, // mark success/failure
+        success: currentCredits >= cost,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Throw if insufficient credits
       if (currentCredits < cost) throw new Error("Insufficient credits");
 
-      // Deduct credits
       tx.update(groupRef, { credits: currentCredits - cost });
 
       return response;

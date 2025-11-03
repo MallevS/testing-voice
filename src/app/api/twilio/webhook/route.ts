@@ -1,5 +1,3 @@
-// webhook/route.ts - CRITICAL FIXES
-
 import { NextRequest, NextResponse } from "next/server";
 import admin from "firebase-admin";
 import { calculateTwilioCost } from "@/app/utils/cost";
@@ -45,7 +43,6 @@ export async function POST(req: NextRequest) {
 
     console.log(`🔄 Mapping Twilio status "${callStatus}" → "${mappedStatus}"`);
 
-    // 🔥 FIX: Find call document
     const callsSnapshot = await db.collection("calls")
       .where("callSid", "==", callSid)
       .limit(1)
@@ -55,7 +52,6 @@ export async function POST(req: NextRequest) {
       const callDoc = callsSnapshot.docs[0];
       const callData = callDoc.data();
 
-      // Update call document
       await callDoc.ref.update({
         status: mappedStatus,
         lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
@@ -63,13 +59,11 @@ export async function POST(req: NextRequest) {
 
       console.log(`✅ Updated call document to status: ${mappedStatus}`);
 
-      // 🔥 CRITICAL FIX: Use callListDocId directly if available
       if (callData.userId && callData.callListDocId) {
         const userDoc = await db.collection("users").doc(callData.userId).get();
         const userData = userDoc.data();
 
         if (userData?.groupId) {
-          // 🔥 DIRECT UPDATE using the callListDocId we saved
           const callListRef = db.collection("groups")
             .doc(userData.groupId)
             .collection("callList")
@@ -93,7 +87,6 @@ export async function POST(req: NextRequest) {
           } catch (err) {
             console.error(`❌ Failed to update callList doc ${callData.callListDocId}:`, err);
             
-            // 🔥 FALLBACK: Try to find by callSid
             console.log(`⚠️ Falling back to callSid search...`);
             const callListSnapshot = await db.collection("groups")
               .doc(userData.groupId)
@@ -112,7 +105,6 @@ export async function POST(req: NextRequest) {
         console.warn(`⚠️ No callListDocId found in call data for SID: ${callSid}`);
       }
 
-      // 🔥 Only bill on completed calls
       if (callStatus.toLowerCase() === "completed" && callDuration) {
         const durationSeconds = parseInt(callDuration, 10);
         const cost = calculateTwilioCost(durationSeconds);
