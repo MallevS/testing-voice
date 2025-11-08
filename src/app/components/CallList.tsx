@@ -280,12 +280,12 @@ const CallList = () => {
         <div className="min-h-screen p-6 bg-gradient-to-br from-blue-50 via-white to-purple-50 text-gray-900">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-5">
-                    <button
+                    {/* <button
                         onClick={() => router.push("/")}
                         className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
                     >
                         ← Back to Home
-                    </button>
+                    </button> */}
                     <h1 className="text-3xl font-bold">📞 Call List</h1>
                 </div>
             </div>

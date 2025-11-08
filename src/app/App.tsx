@@ -21,6 +21,7 @@ import { collection, setDoc, serverTimestamp, doc, getDoc } from "firebase/fires
 import { auth, db } from "../app/firebaseConfig";
 import { signOut, onAuthStateChanged, User } from "firebase/auth";
 import BulkUploadModal from "./components/BulkUploadModal";
+import CallList from './components/CallList';
 
 interface TranscriptMessage {
   id: string;
@@ -44,7 +45,7 @@ function App() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
-  const [showContext, setShowContext] = useState(false);
+  const [showContext, setShowContext] = useState(true);
   const [showInsufficientCreditsModal, setShowInsufficientCreditsModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState<string>("");
 
@@ -244,7 +245,7 @@ function App() {
     return data.client_secret.value;
   };
 
-  const MINIMUM_CREDITS_REQUIRED = 5; 
+  const MINIMUM_CREDITS_REQUIRED = 5;
 
   const connectToRealtime = async () => {
     const agentSetKey = searchParams.get("agentConfig") || "default";
@@ -284,7 +285,7 @@ function App() {
       if (currentCredits < MINIMUM_CREDITS_REQUIRED) {
         setShowInsufficientCreditsModal(true);
         setSessionStatus("DISCONNECTED");
-        return; 
+        return;
       }
 
       const EPHEMERAL_KEY = await fetchEphemeralKey();
@@ -408,7 +409,7 @@ function App() {
     interrupt();
 
     try {
-      await sendUserText(userText.trim()); 
+      await sendUserText(userText.trim());
     } catch (err: any) {
       console.error('Failed to send via SDK', err);
       if (err?.status === 402 || err?.message?.includes("Insufficient credits")) {
@@ -655,12 +656,16 @@ function App() {
           </div>
         </div>
 
+        <div className="flex items-center gap-1">
+          <span> Hello, you are logged in as</span> <span className="font-bold uppercase"> {userRole || "N/A"}!</span>
+        </div>
+
         <div className="flex items-center gap-4">
           <BulkUploadModal onCall={handleInitiateCall} />
-          <Link href="/call-list" className="flex items-center gap-1 px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors duration-300 text-sm font-semibold"
+          {/* <Link href="/call-list" className="flex items-center gap-1 px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors duration-300 text-sm font-semibold"
           >
             Call List
-          </Link>
+          </Link> */}
           <button
             onClick={() => setShowContext(prev => !prev)}
             className="flex items-center gap-1 px-3 py-1 rounded bg-gray-600 hover:bg-gray-500 transition-colors duration-300 text-sm font-semibold"
@@ -767,7 +772,7 @@ function App() {
             />
           </div>
 
-          <div className="flex flex-col gap-1 items-start">
+          {/* <div className="flex flex-col gap-1 items-start">
             <label className="block text-sm font-medium text-gray-700">Phone Number</label>
             <input
               type="tel"
@@ -776,23 +781,23 @@ function App() {
               placeholder="+1234567890"
               className="border border-gray-300 rounded px-3 py-2 w-60 focus:outline-none focus:ring-2 focus:ring-gray-500"
             />
-          </div>
+          </div> */}
 
-          <button
+          {/* <button
             onClick={handleUpdateCompany}
             disabled={!companyName.trim()}
             className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md transition-colors duration-300"
           >
             Update Agent
-          </button>
+          </button> */}
 
-          <button
+          {/* <button
             disabled={!phoneNumber.trim() || !companyName.trim() || !companyContext.trim()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed shadow-md transition-colors duration-300"
             title={!companyName.trim() || !companyContext.trim() ? "Fill in all required fields first" : ""}
           >
             📞 Call
-          </button>
+          </button> */}
         </div>
       </div>
 
@@ -811,7 +816,11 @@ function App() {
         </div>
       )}
 
-      <div className="flex flex-1 gap-2 px-2 overflow-hidden relative p-5">
+      <div className="flex-1 overflow-auto">
+        <CallList />
+      </div>
+
+      {/* <div className="flex flex-1 gap-2 px-2 overflow-hidden relative p-5">
         <Transcript
           userText={userText}
           setUserText={setUserText}
@@ -822,9 +831,9 @@ function App() {
           }
         />
         <Events isExpanded={isEventsPaneExpanded} />
-      </div>
+      </div> */}
 
-      <BottomToolbar
+      {/* <BottomToolbar
         sessionStatus={sessionStatus}
         onToggleConnection={onToggleConnection}
         isPTTActive={isPTTActive}
@@ -839,7 +848,7 @@ function App() {
         codec={urlCodec}
         onCodecChange={handleCodecChange}
         isConnectDisabled={!companyName.trim() || !companyContext.trim()}
-      />
+      /> */}
     </div >
   );
 }
